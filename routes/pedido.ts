@@ -45,12 +45,12 @@ router.post("/", async (req, res) => {
       const pedidoItemsData = items.map(item => {
         const mercadoria = mercadorias.find(m => m.id === item.mercadoria_id);
         if (!mercadoria) throw new Error(`Mercadoria com id ${item.mercadoria_id} não encontrada.`);
-        
+
         const precoItem = Number(mercadoria.preco) * item.quantidade;
         valor_total += precoItem;
 
         if (Number(mercadoria.quantidade) < item.quantidade) {
-            throw new Error(`Estoque insuficiente para a mercadoria "${mercadoria.nome}".`);
+          throw new Error(`Estoque insuficiente para a mercadoria "${mercadoria.nome}".`);
         }
 
         return {
@@ -75,12 +75,12 @@ router.post("/", async (req, res) => {
         }))
       });
 
-       for (const item of items) {
+      for (const item of items) {
         await tx.mercadoria.update({
-            where: { id: item.mercadoria_id },
-            data: { quantidade: { decrement: item.quantidade } }
+          where: { id: item.mercadoria_id },
+          data: { quantidade: { decrement: item.quantidade } }
         });
-       }
+      }
 
       return tx.pedido.findUnique({
         where: { id: pedido.id },
@@ -137,11 +137,11 @@ router.get("/", async (req, res) => {
       include: {
         usuario: true,
         items: {
-            include: {
-                mercadoria: true
-            }
+          include: {
+            mercadoria: true
+          }
         }
-       },
+      },
       orderBy: { id: 'desc' }
     })
     res.status(200).json(pedidos)
@@ -152,108 +152,112 @@ router.get("/", async (req, res) => {
 
 
 router.get("/usuario/:usuario_id", async (req, res) => {
-    const { usuario_id } = req.params
-    try {
-      const pedidos = await prisma.pedido.findMany({
-        where: { usuario_id: String(usuario_id) },
-        include: {
-            items: {
-                include: {
-                    mercadoria: true
-                }
-            }
-        },
-        orderBy: { createdAt: 'desc' }
-      })
-      res.status(200).json(pedidos)
-    } catch (error) {
-      res.status(400).json({ erro: error })
-    }
-  })
+  const { usuario_id } = req.params
+  try {
+    const pedidos = await prisma.pedido.findMany({
+      where: { usuario_id: String(usuario_id) },
+      include: {
+        items: {
+          include: {
+            mercadoria: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+    res.status(200).json(pedidos)
+  } catch (error) {
+    res.status(400).json({ erro: error })
+  }
+})
 
 // atualizar status COM ENVIO DE E-MAIL
 router.patch("/:id", async (req, res) => {
-    const { id } = req.params;
-    const { status } = req.body as { status: StatusPedido };
+  const { id } = req.params;
+  const { status } = req.body as { status: StatusPedido };
 
-    if (!status || !Object.values(StatusPedido).includes(status)) {
-        return res.status(400).json({ erro: "Informe um status válido para o pedido." });
+  if (!status || !Object.values(StatusPedido).includes(status)) {
+    return res.status(400).json({ erro: "Informe um status válido para o pedido." });
+  }
+
+  try {
+    const pedidoAtualizado = await prisma.pedido.update({
+      where: { id: Number(id) },
+      data: { status },
+      include: { usuario: true }
+    });
+
+
+    if (pedidoAtualizado && pedidoAtualizado.usuario) {
+      await enviaEmailAtualizacaoStatus(
+        pedidoAtualizado.usuario.nome,
+        pedidoAtualizado.usuario.email,
+        pedidoAtualizado.id,
+        pedidoAtualizado.status
+      );
     }
 
-    try {
-        const pedidoAtualizado = await prisma.pedido.update({
-            where: { id: Number(id) },
-            data: { status },
-            include: { usuario: true } 
-        });
+    res.status(200).json(pedidoAtualizado);
+  } catch (error) {
+    console.error("Erro ao atualizar pedido:", error);
+    res.status(400).json({
+      erro: "Não foi possível atualizar o status do pedido.",
+      detalhes: error instanceof Error ? error.message : String(error),
+    });
 
-        
-        if (pedidoAtualizado && pedidoAtualizado.usuario) {
-            await enviaEmailAtualizacaoStatus(
-                pedidoAtualizado.usuario.nome,
-                pedidoAtualizado.usuario.email,
-                pedidoAtualizado.id,
-                pedidoAtualizado.status
-            );
-        }
-        
-        res.status(200).json(pedidoAtualizado);
-    } catch (error) {
-        console.error("Erro ao atualizar pedido:", error);
-        res.status(400).json({ erro: "Não foi possível atualizar o status do pedido." });
-    }
+  }
 });
 
 const pedidoUpdateSchema = z.object({
-    status: z.nativeEnum(StatusPedido),
-    adminId: z.string().uuid().optional().nullable(),
+  status: z.nativeEnum(StatusPedido),
+  adminId: z.string().uuid().optional().nullable(),
 });
 
 router.put("/:id", async (req, res) => {
-    const { id } = req.params;
-    const result = pedidoUpdateSchema.safeParse(req.body);
+  const { id } = req.params;
+  const result = pedidoUpdateSchema.safeParse(req.body);
 
-    if (!result.success) {
-        return res.status(400).json({ erro: "Dados inválidos", detalhes: result.error.flatten().fieldErrors });
+  if (!result.success) {
+    return res.status(400).json({ erro: "Dados inválidos", detalhes: result.error.flatten().fieldErrors });
+  }
+
+  try {
+    const pedidoAtualizado = await prisma.pedido.update({
+      where: { id: Number(id) },
+      data: result.data,
+      include: { usuario: true }
+    });
+
+    // Envia e-mail se o status foi atualizado
+    if (pedidoAtualizado && pedidoAtualizado.usuario) {
+      await enviaEmailAtualizacaoStatus(
+        pedidoAtualizado.usuario.nome,
+        pedidoAtualizado.usuario.email,
+        pedidoAtualizado.id,
+        pedidoAtualizado.status
+      );
     }
 
-    try {
-        const pedidoAtualizado = await prisma.pedido.update({
-            where: { id: Number(id) },
-            data: result.data,
-            include: { usuario: true }
-        });
-
-        // Envia e-mail se o status foi atualizado
-        if (pedidoAtualizado && pedidoAtualizado.usuario) {
-            await enviaEmailAtualizacaoStatus(
-                pedidoAtualizado.usuario.nome,
-                pedidoAtualizado.usuario.email,
-                pedidoAtualizado.id,
-                pedidoAtualizado.status
-            );
-        }
-
-        res.status(200).json(pedidoAtualizado);
-    } catch (error) {
-        console.error("Erro ao atualizar pedido:", error);
-        res.status(400).json({ erro: "Não foi possível atualizar o pedido.", detalhes: error });
-    }
+    res.status(200).json(pedidoAtualizado);
+  } catch (error) {
+    console.error("Erro ao atualizar pedido:", error);
+    res.status(400).json({ erro: "Não foi possível atualizar o pedido.", detalhes: error });
+  }
 });
 
 router.delete("/:id", async (req, res) => {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    try {
-        // A deleção em cascata configurada no schema irá remover os PedidoItems associados
-        await prisma.pedido.delete({
-            where: { id: Number(id) }
-        });
-        res.status(200).json({ message: "Pedido deletado com sucesso." });
-    } catch (error) {
-        console.error("Erro ao deletar pedido:", error);
-        res.status(500).json({ erro: "Não foi possível deletar o pedido.", detalhes: error });
-    }
+  try {
+    // A deleção em cascata configurada no schema irá remover os PedidoItems associados
+    await prisma.pedido.delete({
+      where: { id: Number(id) }
+    });
+    res.status(200).json({ message: "Pedido deletado com sucesso." });
+  } catch (error) {
+    console.error("Erro ao deletar pedido:", error);
+    res.status(500).json({ erro: "Não foi possível deletar o pedido.", detalhes: error });
+  }
 });
 
 
