@@ -77,6 +77,32 @@ router.get("/", async (req, res) => {
   }
 })
 
+router.get("/:id/mercadorias", async (req, res) => {
+  
+  const { id } = req.params;
+
+  try {
+    const mercadoriasDoFeirante = await prisma.mercadoria.findMany({
+      
+      where: {
+        
+        feirante_id: Number(id),
+      },
+    
+      select: {
+        id: true,
+        nome: true,
+        preco: true,
+        quantidade: true,
+      },
+    });
+
+    res.status(200).json(mercadoriasDoFeirante);
+  } catch (error) {
+    res.status(500).json({ erro: error });
+  }
+});
+
 router.post("/", async (req, res) => {
 
   const valida = feiranteSchema.safeParse(req.body)
