@@ -119,6 +119,32 @@ router.put("/:id", async (req, res) => {
   }
 })
 
+router.patch("/:id", async (req, res) => {
+  const { id } = req.params
+
+  try {
+    // verifica se o ID existe antes
+    const existente = await prisma.mercadoria.findUnique({
+      where: { id: Number(id) }
+    })
+
+    if (!existente) {
+      return res.status(404).json({ error: "Mercadoria não encontrada" })
+    }
+
+    // atualiza somente os campos recebidos no body
+    const mercadoria = await prisma.mercadoria.update({
+      where: { id: Number(id) },
+      data: req.body
+    })
+
+    res.status(200).json(mercadoria)
+  } catch (error) {
+    res.status(400).json({ error: error.message })
+  }
+})
+
+
 router.get("/pesquisa/:termo", async (req, res) => {
   const { termo } = req.params
 
