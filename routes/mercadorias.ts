@@ -140,7 +140,7 @@ router.patch("/:id", async (req, res) => {
 
     res.status(200).json(mercadoria)
   } catch (error) {
-    res.status(400).json({ error: error.message })
+    res.status(400).json({ error: error })
   }
 })
 
