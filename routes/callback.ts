@@ -9,9 +9,9 @@ router.get("/callback", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Code não encontrado" });
   }
 
-  const clientId = Number(process.env.ME_CLIENT_ID);
+  const clientId = Number(process.env.MELHORENVIO_CLIENT_ID);
   if (!clientId) {
-    return res.status(500).json({ error: "ME_CLIENT_ID inválido ou não definido" });
+    return res.status(500).json({ error: "MELHORENVIO_CLIENT_ID inválido ou não definido" });
   }
 
   try {
@@ -20,7 +20,7 @@ router.get("/callback", async (req: Request, res: Response) => {
       {
         grant_type: "authorization_code",
         client_id: clientId,
-        client_secret: process.env.ME_CLIENT_SECRET,
+        client_secret: process.env.MELHORENVIO_CLIENT_SECRET,
         redirect_uri: "https://api-melhor-envio-brown.vercel.app/callback",
         code,
       },
