@@ -16,7 +16,7 @@ router.get("/callback", async (req: Request, res: Response) => {
       "https://sandbox.melhorenvio.com.br/oauth/token",
       {
         grant_type: "authorization_code",
-        client_id: process.env.ME_CLIENT_ID,
+        client_id: Number(process.env.ME_CLIENT_ID),
         client_secret: process.env.ME_CLIENT_SECRET,
         redirect_uri: "https://api-melhor-envio-brown.vercel.app/callback",
         code,
