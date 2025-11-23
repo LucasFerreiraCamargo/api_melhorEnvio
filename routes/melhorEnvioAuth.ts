@@ -44,7 +44,8 @@ router.post('/token', async (req, res) => {
         }
 
         const response = await axios.post(
-            'https://sandbox.melhorenvio.com.br/oauth/token',
+            // 'https://sandbox.melhorenvio.com.br/oauth/token',
+            
             payload,
             {
                 headers: {

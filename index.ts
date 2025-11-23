@@ -3,6 +3,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors'
 import routesMelhorEnvioAuth from './routes/melhorEnvioAuth';
+import callbackRoute from "./routes/callback";
 
 dotenv.config();
 
@@ -11,6 +12,8 @@ app.use(express.json());
 app.use(cors())
 
 app.use('/', routesMelhorEnvioAuth);
+app.use("/", callbackRoute);
+
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
