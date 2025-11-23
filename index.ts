@@ -10,7 +10,7 @@ const app = express();
 app.use(express.json());
 app.use(cors())
 
-app.use('/api', routesMelhorEnvioAuth);
+app.use('/', routesMelhorEnvioAuth);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
