@@ -22,7 +22,9 @@ router.get('/callback', (req, res) => {
     // 2. Decidimos para onde mandar o usuário de volta
     // Se o frontend mandou um 'state' (ex: exp://192.168.1.5:8081), usamos ele.
     // Se não, usamos um fallback (ex: myapp://callback)
-    let appRedirectUrl = (state as string) || "http://192.168.8.65:8081";
+    // let appRedirectUrl = (state as string) || "http://192.168.8.65:8081";
+    //por enquanto deixamos sempre para esse link
+    let appRedirectUrl = "http://192.168.8.65:8081";
 
     // Decodifica caso venha codificado
     appRedirectUrl = decodeURIComponent(appRedirectUrl);
