@@ -1,48 +1,69 @@
-import { Router, Request, Response } from "express";
-import axios from "axios";
+// import { Router, Request, Response } from "express";
+// import axios from "axios";
+
+// const router = Router();
+
+// router.get("/callback", async (req: Request, res: Response) => {
+//   const code = req.query.code as string;
+//   if (!code) {
+//     return res.status(400).json({ error: "Code não encontrado" });
+//   }
+
+//   const clientId = Number(process.env.MELHORENVIO_CLIENT_ID);
+//   if (!clientId) {
+//     return res.status(500).json({ error: "MELHORENVIO_CLIENT_ID inválido ou não definido" });
+//   }
+
+//   try {
+//     const response = await axios.post(
+//       "https://sandbox.melhorenvio.com.br/oauth/token",
+//       {
+//         grant_type: "authorization_code",
+//         client_id: clientId,
+//         client_secret: process.env.MELHORENVIO_CLIENT_SECRET,
+//         redirect_uri: "https://api-melhor-envio-brown.vercel.app/callback",
+//         code,
+//       },
+//       {
+//         headers: {
+//           Accept: "application/json",
+//           "Content-Type": "application/json",
+//           "User-Agent": "MinhaApp (meuemail@suporte.com)",
+//         },
+//       }
+//     );
+
+//     const { access_token } = response.data;
+
+//     // Redireciona para Expo local
+//     const redirectUrl = `exp://192.168.8.65:8081?token=${access_token}`;
+//     return res.redirect(redirectUrl);
+
+//   } catch (err: any) {
+//     console.error(err.response?.data || err.message);
+//     return res.status(500).json({ error: "Erro ao gerar token", detalhes: err.response?.data });
+//   }
+// });
+
+// export default router;
+import { Router } from 'express';
 
 const router = Router();
 
-router.get("/callback", async (req: Request, res: Response) => {
-  const code = req.query.code as string;
-  if (!code) {
-    return res.status(400).json({ error: "Code não encontrado" });
-  }
+router.get('/callback', (req, res) => {
+    const code = req.query.code;
 
-  const clientId = Number(process.env.MELHORENVIO_CLIENT_ID);
-  if (!clientId) {
-    return res.status(500).json({ error: "MELHORENVIO_CLIENT_ID inválido ou não definido" });
-  }
+    console.log("📌 CODE RECEBIDO NO CALLBACK:", code);
 
-  try {
-    const response = await axios.post(
-      "https://sandbox.melhorenvio.com.br/oauth/token",
-      {
-        grant_type: "authorization_code",
-        client_id: clientId,
-        client_secret: process.env.MELHORENVIO_CLIENT_SECRET,
-        redirect_uri: "https://api-melhor-envio-brown.vercel.app/callback",
-        code,
-      },
-      {
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "User-Agent": "MinhaApp (meuemail@suporte.com)",
-        },
-      }
-    );
+    if (!code) {
+        return res.status(400).json({ error: "Código não encontrado" });
+    }
 
-    const { access_token } = response.data;
+    // ENCODE para não quebrar caracteres especiais
+    const encoded = encodeURIComponent(code as string);
 
-    // Redireciona para Expo local
-    const redirectUrl = `exp://192.168.8.65:8081?token=${access_token}`;
-    return res.redirect(redirectUrl);
-
-  } catch (err: any) {
-    console.error(err.response?.data || err.message);
-    return res.status(500).json({ error: "Erro ao gerar token", detalhes: err.response?.data });
-  }
+    // Seu App Expo precisa ter o scheme "myapp"
+    return res.redirect(`myapp://callback?code=${encoded}`);
 });
 
 export default router;
