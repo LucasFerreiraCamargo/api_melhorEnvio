@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import cors from 'cors'
 import routesMelhorEnvioAuth from './routes/melhorEnvioAuth';
 import callbackRoute from "./routes/callback";
+import melhorEnvioRoutes from "./routes/melhorEnvio.routes";
 
 dotenv.config();
 
@@ -13,6 +14,7 @@ app.use(cors())
 
 app.use('/', routesMelhorEnvioAuth);
 app.use("/", callbackRoute);
+app.use("/", melhorEnvioRoutes);
 
 
 const PORT = process.env.PORT || 3001;

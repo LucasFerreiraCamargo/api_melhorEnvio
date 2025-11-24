@@ -3,72 +3,76 @@ import axios from 'axios';
 
 const router = Router();
 
-// 1. Rota de Callback (O Melhor Envio te chama aqui depois do login)
+// ==============================================================================
+// 1. ROTA DE CALLBACK (A "PONTE")
+// O Melhor Envio chama ISSO aqui (HTTPS), e nós redirecionamos para o APP (Deep Link)
+// ==============================================================================
 router.get('/callback', (req, res) => {
-    const { code, error } = req.query;
+    // 1. Pegamos os dados que o Melhor Envio mandou
+    const { code, error, state } = req.query;
 
     if (error) {
-        return res.status(400).json({ error: "O usuário negou a permissão ou ocorreu erro." });
+        return res.status(400).send("<h1>Erro: Acesso negado pelo usuário.</h1>");
     }
 
     if (!code) {
-        return res.status(400).json({ error: "Código não encontrado na resposta." });
+        return res.status(400).send("<h1>Erro: Código não recebido.</h1>");
     }
 
-    // Identifica para onde redirecionar o App
-    // EM DESENVOLVIMENTO (EXPO GO): Use o IP ou exp://
-    // EM PRODUÇÃO (BUILD): Use o scheme do app (ex: myapp://)
-    
-    // Você pode deixar isso dinâmico via variável de ambiente ou hardcoded para testes
-    // Exemplo: 'exp://192.168.0.10:8081' ou 'myapp://callback'
-    const appRedirectUrl = process.env.APP_SCHEME || "myapp://callback"; 
+    // 2. Decidimos para onde mandar o usuário de volta
+    // Se o frontend mandou um 'state' (ex: exp://192.168.1.5:8081), usamos ele.
+    // Se não, usamos um fallback (ex: myapp://callback)
+    let appRedirectUrl = (state as string) || "myapp://callback";
 
-    console.log(`📌 Redirecionando code para o App: ${appRedirectUrl}`);
+    // Decodifica caso venha codificado
+    appRedirectUrl = decodeURIComponent(appRedirectUrl);
 
-    // Redireciona o navegador do celular de volta para o App passando o code
-    return res.redirect(`${appRedirectUrl}?code=${code}`);
+    console.log(`🔀 Redirecionando navegador para o App: ${appRedirectUrl}`);
+
+    // 3. Montamos a URL final com o código
+    // Verifica se já tem '?' na URL para usar '&' ou '?'
+    const separator = appRedirectUrl.includes('?') ? '&' : '?';
+    const finalUrl = `${appRedirectUrl}${separator}code=${code}`;
+
+    // 4. O comando mágico: Redireciona o browser do celular para o App
+    return res.redirect(finalUrl);
 });
 
-// 2. Rota de Troca de Token (Seu App chama aqui)
+
+// ==============================================================================
+// 2. ROTA DE TROCA DE TOKEN (O APP CHAMA ESSA)
+// ==============================================================================
 router.post('/token', async (req, res) => {
     try {
         const { code } = req.body;
 
-        if (!code) {
-            return res.status(400).json({ error: "Code é obrigatório" });
-        }
+        if (!code) return res.status(400).json({ error: "Code obrigatório" });
 
-        console.log("📌 Trocando Code por Token...");
+        // A URL de callback AQUI deve ser a mesma cadastrada no painel do Melhor Envio
+        // (A URL HTTPS da Vercel)
+        const redirectUri = process.env.MELHORENVIO_REDIRECT_URI; 
 
         const payload = {
             grant_type: "authorization_code",
             client_id: process.env.MELHORENVIO_CLIENT_ID,
             client_secret: process.env.MELHORENVIO_CLIENT_SECRET,
-            // IMPORTANTE: Este redirect_uri deve ser EXATAMENTE O MESMO 
-            // configurado no App do Melhor Envio e usado na URL de login (o /callback deste backend)
-            redirect_uri: process.env.MELHORENVIO_REDIRECT_URI, 
+            redirect_uri: redirectUri, 
             code
         };
 
+        console.log("🔄 Trocando code por token com redirect_uri:", redirectUri);
+
         const response = await axios.post(
             "https://sandbox.melhorenvio.com.br/oauth/token",
-            payload,
-            {
-                headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                    "User-Agent": "Aplicação (seuemail@dominio.com)" // Boa prática adicionar User-Agent
-                }
-            }
+            payload
         );
 
-        console.log("✅ Token gerado com sucesso!");
         return res.json(response.data);
 
     } catch (error: any) {
-        console.error("❌ ERRO AO TROCAR TOKEN:", error.response?.data || error.message);
+        console.error("❌ Erro na troca de token:", error.response?.data || error.message);
         return res.status(400).json({
-            error: "Erro ao gerar token",
+            error: "Falha na troca do token",
             detalhes: error.response?.data
         });
     }
